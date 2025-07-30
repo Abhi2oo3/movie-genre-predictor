@@ -7,6 +7,33 @@ from plotly.subplots import make_subplots
 import joblib
 import sys
 import os
+import nltk
+import ssl
+
+# Download NLTK data automatically
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
+
+# Download required NLTK data
+@st.cache_resource
+def download_nltk_data():
+    """Download required NLTK data."""
+    try:
+        nltk.download('stopwords', quiet=True)
+        nltk.download('punkt', quiet=True)
+        nltk.download('wordnet', quiet=True)
+        nltk.download('omw-1.4', quiet=True)
+        return True
+    except Exception as e:
+        st.error(f"Error downloading NLTK data: {e}")
+        return False
+
+# Download NLTK data on startup
+download_nltk_data()
 
 # Add the src directory to the path
 sys.path.append('src')
@@ -80,43 +107,53 @@ def load_model():
     try:
         model_path = 'models/movie_genre_predictor.pkl'
         if os.path.exists(model_path):
-            predictor = MovieGenrePredictor()
-            predictor.load_model(model_path)
-            return predictor
+            with st.spinner("Loading trained model..."):
+                predictor = MovieGenrePredictor()
+                predictor.load_model(model_path)
+                st.success("✅ Model loaded successfully!")
+                return predictor
         else:
-            st.warning("Trained model not found. Training a new model...")
+            st.info("🤖 No trained model found. Training a new model...")
             return train_new_model()
     except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None
+        st.error(f"❌ Error loading model: {e}")
+        st.info("🔄 Attempting to train a new model...")
+        return train_new_model()
 
 def train_new_model():
     """Train a new model if the saved model is not available."""
     try:
+        # Ensure NLTK data is downloaded
+        download_nltk_data()
+        
         df = load_data()
         if df is None:
             return None
         
-        # Preprocess data
-        preprocessor = TextPreprocessor(use_stemming=True, use_lemmatization=False)
-        df_processed = preprocessor.preprocess_dataframe(df, 'plot')
-        df_processed = create_genre_columns(df_processed, 'genre')
-        df_processed = df_processed.dropna(subset=['plot_processed'])
+        with st.spinner("Preprocessing data..."):
+            # Preprocess data
+            preprocessor = TextPreprocessor(use_stemming=True, use_lemmatization=False)
+            df_processed = preprocessor.preprocess_dataframe(df, 'plot')
+            df_processed = create_genre_columns(df_processed, 'genre')
+            df_processed = df_processed.dropna(subset=['plot_processed'])
         
         # Get genre columns
         genre_columns = [col for col in df_processed.columns if col.startswith('genre_')]
         
-        # Train model
-        predictor = MovieGenrePredictor(vectorizer_type='tfidf', model_type='logistic')
-        predictor.train(df_processed, 'plot_processed', genre_columns, min_samples_per_class=3)
+        with st.spinner("Training model..."):
+            # Train model
+            predictor = MovieGenrePredictor(vectorizer_type='tfidf', model_type='logistic')
+            predictor.train(df_processed, 'plot_processed', genre_columns, min_samples_per_class=3)
         
         # Create models directory and save
         os.makedirs('models', exist_ok=True)
         predictor.save_model('models/movie_genre_predictor.pkl')
         
+        st.success("✅ Model trained successfully!")
         return predictor
     except Exception as e:
         st.error(f"Error training model: {e}")
+        st.error("Please check the logs for more details.")
         return None
 
 def main():

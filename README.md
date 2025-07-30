@@ -61,8 +61,8 @@ movie-genre-predictor/
    ```
 
 4. **Download NLTK data**
-   ```python
-   python -c "import nltk; nltk.download('stopwords'); nltk.download('punkt')"
+   ```bash
+   python setup_nltk.py
    ```
 
 ## 📊 Dataset
