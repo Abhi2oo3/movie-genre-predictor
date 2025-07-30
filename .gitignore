@@ -139,7 +139,7 @@ dmypy.json
 Thumbs.db
 
 # Project specific
-models/*.pkl
+# models/*.pkl  # Allow trained models for deployment
 *.joblib
 *.pickle
 

@@ -23,20 +23,35 @@ else:
 def download_nltk_data():
     """Download required NLTK data."""
     try:
-        nltk.download('stopwords', quiet=True)
-        nltk.download('punkt', quiet=True)
-        nltk.download('wordnet', quiet=True)
-        nltk.download('omw-1.4', quiet=True)
-        return True
+        # Download all required NLTK packages
+        packages = ['stopwords', 'punkt', 'wordnet', 'omw-1.4', 'punkt_tab']
+        
+        for package in packages:
+            try:
+                nltk.download(package, quiet=True)
+            except Exception as e:
+                # Continue even if one package fails
+                print(f"Warning: Could not download {package}: {e}")
+        
+        # Verify critical packages are available
+        try:
+            from nltk.corpus import stopwords
+            from nltk.tokenize import word_tokenize
+            print("✅ NLTK data verification successful")
+            return True
+        except Exception as e:
+            st.error(f"NLTK data verification failed: {e}")
+            return False
+            
     except Exception as e:
         st.error(f"Error downloading NLTK data: {e}")
         return False
 
-# Download NLTK data on startup
-download_nltk_data()
-
 # Add the src directory to the path
 sys.path.append('src')
+
+# Download NLTK data on startup - BEFORE importing any modules that use NLTK
+download_nltk_data()
 
 from src.preprocess import TextPreprocessor, get_all_genres, create_genre_columns
 from src.model import MovieGenrePredictor
@@ -123,27 +138,37 @@ def load_model():
 def train_new_model():
     """Train a new model if the saved model is not available."""
     try:
-        # Ensure NLTK data is downloaded
-        download_nltk_data()
+        # Ensure NLTK data is downloaded and verified
+        if not download_nltk_data():
+            st.error("❌ Failed to download NLTK data. Cannot proceed with training.")
+            return None
         
         df = load_data()
         if df is None:
             return None
         
         with st.spinner("Preprocessing data..."):
-            # Preprocess data
-            preprocessor = TextPreprocessor(use_stemming=True, use_lemmatization=False)
-            df_processed = preprocessor.preprocess_dataframe(df, 'plot')
-            df_processed = create_genre_columns(df_processed, 'genre')
-            df_processed = df_processed.dropna(subset=['plot_processed'])
+            try:
+                # Preprocess data
+                preprocessor = TextPreprocessor(use_stemming=True, use_lemmatization=False)
+                df_processed = preprocessor.preprocess_dataframe(df, 'plot')
+                df_processed = create_genre_columns(df_processed, 'genre')
+                df_processed = df_processed.dropna(subset=['plot_processed'])
+            except Exception as e:
+                st.error(f"❌ Error during preprocessing: {e}")
+                return None
         
         # Get genre columns
         genre_columns = [col for col in df_processed.columns if col.startswith('genre_')]
         
         with st.spinner("Training model..."):
-            # Train model
-            predictor = MovieGenrePredictor(vectorizer_type='tfidf', model_type='logistic')
-            predictor.train(df_processed, 'plot_processed', genre_columns, min_samples_per_class=3)
+            try:
+                # Train model
+                predictor = MovieGenrePredictor(vectorizer_type='tfidf', model_type='logistic')
+                predictor.train(df_processed, 'plot_processed', genre_columns, min_samples_per_class=3)
+            except Exception as e:
+                st.error(f"❌ Error during model training: {e}")
+                return None
         
         # Create models directory and save
         os.makedirs('models', exist_ok=True)
@@ -152,7 +177,7 @@ def train_new_model():
         st.success("✅ Model trained successfully!")
         return predictor
     except Exception as e:
-        st.error(f"Error training model: {e}")
+        st.error(f"❌ Error training model: {e}")
         st.error("Please check the logs for more details.")
         return None
 
