@@ -230,8 +230,10 @@ def show_prediction_page(predictor, df):
         # Text input for plot
         plot_input = st.text_area(
             "Enter a movie plot summary:",
+            value=st.session_state.get('plot_input', ''),
             height=150,
-            placeholder="Example: A young wizard discovers his magical powers and battles an evil sorcerer..."
+            placeholder="Example: A young wizard discovers his magical powers and battles an evil sorcerer...",
+            key="main_plot_input"
         )
         
         # Prediction button
@@ -291,14 +293,22 @@ def show_prediction_page(predictor, df):
             "A family moves into a haunted house and encounters supernatural events"
         ]
         
-        for i, plot in enumerate(sample_plots, 1):
-            if st.button(f"Example {i}", key=f"sample_{i}"):
-                st.session_state.plot_input = plot
-                st._rerun()
+        # Use radio buttons instead of buttons to avoid rerun issues
+        selected_example = st.radio(
+            "Choose an example:",
+            ["None"] + [f"Example {i}" for i in range(1, len(sample_plots) + 1)],
+            key="example_selector"
+        )
         
-        # Auto-fill if example is selected
-        if 'plot_input' in st.session_state:
-            st.text_area("Selected example:", st.session_state.plot_input, height=100, disabled=True)
+        # Update session state when example is selected
+        if selected_example != "None":
+            example_index = int(selected_example.split()[-1]) - 1
+            st.session_state.plot_input = sample_plots[example_index]
+        
+        # Show selected example
+        if 'plot_input' in st.session_state and st.session_state.plot_input:
+            st.markdown("**Selected example:**")
+            st.text_area("", st.session_state.plot_input, height=100, disabled=True, key="example_display")
 
 def show_analysis_page(df):
     """Show the data analysis page."""
@@ -517,8 +527,8 @@ def show_about_page():
     
     ### 🔗 Links
     
-    - **GitHub Repository**: [Movie Genre Predictor](https://github.com/yourusername/movie-genre-predictor)
-    - **LinkedIn**: [Your Profile](https://linkedin.com/in/yourusername)
+    - **GitHub Repository**: [Movie Genre Predictor](https://github.com/Abhi2oo3/movie-genre-predictor)
+    - **LinkedIn**: [Your Profile](www.linkedin.com/in/abhishek-dixit03)
     
     ### 📝 License
     
