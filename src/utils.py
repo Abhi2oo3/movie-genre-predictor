@@ -2,13 +2,19 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from wordcloud import WordCloud
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from collections import Counter
 import warnings
 warnings.filterwarnings('ignore')
+
+# Try to import wordcloud, but make it optional
+try:
+    from wordcloud import WordCloud
+    WORDCLOUD_AVAILABLE = True
+except ImportError:
+    WORDCLOUD_AVAILABLE = False
 
 # Set style for matplotlib
 plt.style.use('default')
@@ -130,6 +136,10 @@ def create_wordcloud_by_genre(df: pd.DataFrame, text_column: str, genre_column: 
         top_genres (int): Number of top genres to visualize
         figsize (tuple): Figure size
     """
+    if not WORDCLOUD_AVAILABLE:
+        print("⚠️  WordCloud not available. Install with: pip install wordcloud")
+        return
+    
     from src.preprocess import get_all_genres
     
     # Get top genres by count

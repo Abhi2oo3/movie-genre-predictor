@@ -107,7 +107,7 @@ matplotlib==3.7.2
 seaborn==0.12.2
 streamlit==1.25.0
 jupyter==1.0.0
-wordcloud==1.9.2
+# wordcloud==1.9.2  # Optional - removed for Python 3.13 compatibility
 plotly==5.15.0
 ```
 
